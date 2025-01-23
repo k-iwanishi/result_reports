@@ -33,7 +33,14 @@ func recognizeText(from imagePath: String) {
             let text = topCandidate.string
             let boundingBox = observation.boundingBox
 
-            let result = [
+            var label: String? = nil
+            if boundingBox.origin.x > 0.19 && boundingBox.origin.x < 0.20 && boundingBox.origin.y > 0.94 && boundingBox.origin.y < 0.95 {
+                label = "曲名"
+            } else if boundingBox.origin.x > 0.30 && boundingBox.origin.x < 0.31 && boundingBox.origin.y > 0.89 && boundingBox.origin.y < 0.90 {
+                label = "Lv"
+            }
+
+            var result: [String: Any] = [
                 "text": text,
                 "boundingBox": [
                     "x": boundingBox.origin.x,
@@ -41,7 +48,10 @@ func recognizeText(from imagePath: String) {
                     "width": boundingBox.width,
                     "height": boundingBox.height
                 ]
-            ] as [String : Any]
+            ]
+            if let label = label {
+                result["label"] = label
+            }
             results.append(result)
         }
 
