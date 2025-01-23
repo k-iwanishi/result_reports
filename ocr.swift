@@ -5,47 +5,39 @@ import Foundation
 import AppKit
 import Vision
 
-func getImageCreationDate(from imagePath: String) {
+func getImageCreationDate(from imagePath: String) -> Date? {
     let fileManager = FileManager.default
     if fileManager.fileExists(atPath: imagePath) {
         do {
             let attributes = try fileManager.attributesOfItem(atPath: imagePath)
-            if let creationDate = attributes[.creationDate] as? Date {
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "ja_JP")
-                formatter.dateFormat = "yyyy年M月d日 H時m分s秒"
-                let dateString = formatter.string(from: creationDate)
-                print("画像の作成日: \(dateString)")
-            } else {
-                print("画像の作成日を取得できませんでした。")
-            }
+            return attributes[.creationDate] as? Date
         } catch {
-            print("エラー: \(error)")
+            return nil
         }
     } else {
-        print("ファイルが存在しません: \(imagePath)")
+        return nil
     }
 }
 
-func recognizeText(from imagePath: String) {
+func recognizeText(from imagePath: String) -> [String: Any]? {
     guard let image = NSImage(contentsOfFile: imagePath) else {
-        print("Error: Could not load image from path: \(imagePath)")
-        return
+        return ["error": "Could not load image from path: \(imagePath)"]
     }
     guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-        print("Error: Could not get CGImage from NSImage")
-        return
+        return ["error": "Could not get CGImage from NSImage"]
     }
 
     let requestHandler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
+    var jsonObjectResult: [String: Any]? = nil // JSONオブジェクトを格納する変数
+
     let request = VNRecognizeTextRequest { request, error in
         if let error = error {
-            print("Error: \(error)")
+            jsonObjectResult = ["error": "Text recognition error: \(error)"]
             return
         }
 
         guard let observations = request.results as? [VNRecognizedTextObservation] else {
-            print("No text observations found")
+            jsonObjectResult = ["error": "No text observations found"]
             return
         }
 
@@ -77,21 +69,15 @@ func recognizeText(from imagePath: String) {
             results.append(result)
         }
 
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: results, options: .prettyPrinted)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                print(jsonString)
-            }
-        } catch {
-            print("Error encoding JSON: \(error)")
-        }
+        jsonObjectResult = ["results": results]
     }
 
     do {
         request.recognitionLanguages = ["ja-JP", "en-US"]
         try requestHandler.perform([request])
+        return jsonObjectResult // JSONオブジェクトを返す
     } catch {
-        print("Error performing text recognition request: \(error)")
+        return ["error": "テキスト認識リクエストの実行エラー: \(error)"]
     }
 }
 
@@ -99,8 +85,30 @@ if CommandLine.arguments.count != 2 {
     print("Usage: ocr.swift <image_path>")
 } else {
     let imagePath = CommandLine.arguments[1]
-    recognizeText(from: imagePath)
-    getImageCreationDate(from: imagePath) // 作成日出力メソッドを追加
+    var output: [String: Any] = [:]
+    if let jsonObjectResult = recognizeText(from: imagePath) {
+        output["recognize_text"] = jsonObjectResult["results"]
+    } else {
+        output["recognize_text"] = ["error": "テキスト認識処理でエラーが発生しました。"]
+    }
+    if let creationDate = getImageCreationDate(from: imagePath) {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "yyyy年M月d日 H時m分s秒"
+        let dateString = formatter.string(from: creationDate)
+        output["creation_date"] = dateString
+    } else {
+        output["creation_date"] = "画像の作成日を取得できませんでした。"
+    }
+    
+    do {
+        let jsonData = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
+        if let jsonString = String(data: jsonData, encoding: .utf8) {
+            print(jsonString)
+        }
+    } catch {
+        print("JSONエンコードエラー: \(error)")
+    }
 }
 
 #else
