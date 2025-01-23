@@ -94,7 +94,7 @@ if CommandLine.arguments.count != 2 {
     if let creationDate = getImageCreationDate(from: imagePath) {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "yyyy年M月d日 H時m分s秒"
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
         let dateString = formatter.string(from: creationDate)
         output["creation_date"] = dateString
     } else {
