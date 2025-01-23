@@ -5,6 +5,28 @@ import Foundation
 import AppKit
 import Vision
 
+func getImageCreationDate(from imagePath: String) {
+    let fileManager = FileManager.default
+    if fileManager.fileExists(atPath: imagePath) {
+        do {
+            let attributes = try fileManager.attributesOfItem(atPath: imagePath)
+            if let creationDate = attributes[.creationDate] as? Date {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "ja_JP")
+                formatter.dateFormat = "yyyy年M月d日 H時m分s秒"
+                let dateString = formatter.string(from: creationDate)
+                print("画像の作成日: \(dateString)")
+            } else {
+                print("画像の作成日を取得できませんでした。")
+            }
+        } catch {
+            print("エラー: \(error)")
+        }
+    } else {
+        print("ファイルが存在しません: \(imagePath)")
+    }
+}
+
 func recognizeText(from imagePath: String) {
     guard let image = NSImage(contentsOfFile: imagePath) else {
         print("Error: Could not load image from path: \(imagePath)")
@@ -78,6 +100,7 @@ if CommandLine.arguments.count != 2 {
 } else {
     let imagePath = CommandLine.arguments[1]
     recognizeText(from: imagePath)
+    getImageCreationDate(from: imagePath) // 作成日出力メソッドを追加
 }
 
 #else
